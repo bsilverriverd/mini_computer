@@ -24,14 +24,14 @@ module alu(
     input [7:0] a,
     input [7:0] b,
     input carry_in,
-    input [2:0] opcode,
+    input [2:0] op,
     output [7:0] out,
     output A, E, Z, C
     );
     
     wire [7:0] en;
     
-    alu_decoder(.in(opcode), .out(en));
+    alu_decoder(.in(op), .out(en));
     
     wire [7:0] XOR, OR, AND, NOT, SHL, SHR, ADD;
     wire [7:0] XOR_en, OR_en, AND_en, NOT_en, SHL_en, SHR_en, ADD_en;
@@ -145,8 +145,5 @@ module bit_xor(
     xor(a_xor_b, a, b);
     and(E_out, E_in, !a_xor_b);
     or(A_out, a & E_in & a_xor_b, A_in);
-    
-endmodule
-    
     
 endmodule
