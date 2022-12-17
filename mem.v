@@ -70,7 +70,6 @@ module enabler(
 
 endmodule
 
-
 module register(
     input[7:0] in, 
     input set,
@@ -83,6 +82,21 @@ module register(
     
     enabler reg_enabler(.in(buffer), .en(en), .out(out)); 
     
+endmodule
+
+module register_monitor(
+    input[7:0] in, 
+    input set,
+    input en,
+    output [7:0] out,
+    output [7:0] monitor
+    );
     
+    wire[7:0] buffer;
+    byte reg_byte(.in(in), .set(set), .out(buffer));
+    
+    enabler reg_enabler(.in(buffer), .en(en), .out(out)); 
+    
+    assign monitor = buffer;
 endmodule
 

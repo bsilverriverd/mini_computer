@@ -21,53 +21,60 @@
 
 
 module cpu_top(
-    input clk, rst
+    input clk, clk_en, clk_set, rst, halt, new_in,
+    input [7:0] program_data, program_addr,
+    output [7:0] r0, r1, r2, r3
     );
     
     wire [7:0] bus;
     wire [7:0] r0_out, r1_out, r2_out, r3_out;
     wire [7:0] ir_out, iar_out, acc_out, tmp_out, ram_out, alu_out, bus1_out;
+    wire [3:0] alu_flags;
+    wire [7:0] flags_out;
     wire ram_en, acc_en, r0_en, r1_en, r2_en, r3_en, iar_en, b1;
-    wire mar_set, acc_set, ram_set, tmp_set, r0_set, r1_set, r2_set, r3_set, iar_set;
+    wire mar_set, acc_set, ram_set, tmp_set, r0_set, r1_set, r2_set, r3_set, iar_set, flags_set;
     wire [2:0] op;
-    
+        
     or(bus, r0_out, r1_out, r2_out, r3_out, iar_out, acc_out, ram_out);
-    register R0(.in(bus), .en(r0_en), .set(r0_set), .out(r0_out));
-    register R1(.in(bus), .en(r1_en), .set(r1_set), .out(r1_out));
-    register R2(.in(bus), .en(r2_en), .set(r2_set), .out(r2_out));
-    register R3(.in(bus), .en(r2_en), .set(r3_set), .out(r3_out));
+    register_monitor R0(.in(bus), .en(r0_en), .set(r0_set), .out(r0_out), .monitor(r0));
+    register_monitor R1(.in(bus), .en(r1_en), .set(r1_set), .out(r1_out), .monitor(r1));
+    register_monitor R2(.in(bus), .en(r2_en), .set(r2_set), .out(r2_out), .monitor(r2));
+    register_monitor R3(.in(bus), .en(r3_en), .set(r3_set), .out(r3_out), .monitor(r3));
     
     register IR(.in(bus), .en(1'b1), .set(ir_set), .out(ir_out));
     register IAR(.in(bus), .en(iar_en), .set(iar_set), .out(iar_out));
     register TMP(.in(bus), .en(1'b1), .set(tmp_set), .out(tmp_out));
     register ACC(.in(alu_out), .en(acc_en), .set(acc_set), .out(acc_out));
+    register FLAGS(.in({4'b0000, alu_flags}), .en(1'b1), .set(flags_set), .out(flags_out));
     
     bus1 top_bus1(
-        .in(tmp_out), .b1(), .out(bus1_out)
+        .in(tmp_out), .b1(b1), .out(bus1_out)
     );
+    
     alu top_alu(
         .a(bus),
         .b(bus1_out),
-        input carry_in,
+        .carry_in(flags_out[3]),
         .op(op),
         .out(alu_out),
-        output A, E, Z, C
+        .C(alu_flags[3]), .A(alu_flags[2]), .E(alu_flags[1]), .Z(alu_flags[0])
     );
     
     control_section top_ctrl(
-        .clk(clk), .rst(rst),
+        .clk(clk), .clk_en(clk_en), .clk_set(clk_set), .rst(rst), .halt(halt),
         .ir(ir_out),
-        .ram_en(ram_en), .acc_en(acc_en), .r0_en(r0_en), .r1_en(r1_en), .r2_en(r2_en), .r3_en(r2_en), .iar_en(iar_en),
+        .C(flags_out[3]), .A(flags_out[2]), .E(alu_flags[1]), .Z(alu_flags[0]),
+        .ram_en(ram_en), .acc_en(acc_en), .r0_en(r0_en), .r1_en(r1_en), .r2_en(r2_en), .r3_en(r3_en), .iar_en(iar_en),
         .mar_set(mar_set), .acc_set(acc_set), .ram_set(ram_set), .tmp_set(tmp_set), .r0_set(r0_set), .r1_set(r1_set), .r2_set(r2_set), .r3_set(r3_set), .iar_set(iar_set),
-        .tmp_set(tmp_set), .b1(b1), .ir_set(ir_set),
+        .b1(b1), .ir_set(ir_set), .flags_set(flags_set),
         .op(op)
     );
     
     ram top_ram(
-        .addr(bus),
-        .set_addr(mar_set),
-        .in(bus),
-        .set(ram_set),
+        .addr(bus | ({8{halt}} & program_addr)),
+        .set_addr(mar_set | (halt & new_in)),
+        .in(bus | ({8{halt}} & program_data)),
+        .set(ram_set | (halt & ~new_in)),
         .en(ram_en),
         .out(ram_out)
     );

@@ -40,13 +40,16 @@ module alu(
     
     or(OR, a, b);
     and(AND, a, b);
-    not(NOT, a, b);
+    
+    assign NOT = ~a;
     
     assign SHR = {carry_in, b[7:1]};
     assign SHL = {b[6:0], carry_in};
+    assign SHR_carry_out = b[0];
+    assign SHL_carry_out = b[7];
     
-    adder adder(.a(a), .b(b), .carry_in(carry_in), .sum(ADD), .carry_out(ADD_carry_out));
-    xorer xorer(.a(a), .b(b), .out(XOR), .A(A), .E(E));
+    alu_adder adder(.a(a), .b(b), .carry_in(carry_in), .sum(ADD), .carry_out(ADD_carry_out));
+    alu_xorer xorer(.a(a), .b(b), .out(XOR), .A(A), .E(E));
     
     enabler enablerADD(.in(ADD), .en(en[0]), .out(ADD_en));
     enabler enablerSHR(.in(SHR), .en(en[1]), .out(SHR_en));
@@ -55,9 +58,8 @@ module alu(
     enabler enablerAND(.in(AND), .en(en[4]), .out(AND_en));
     enabler enablerOR(.in(OR), .en(en[5]), .out(OR_en));
     enabler enablerXOR(.in(XOR), .en(en[6]), .out(XOR_en));
-    enabler enablerCMP(.in(CMP), .en(en[7]), .out(CMP_en));
     
-    or(out, ADD_en, SHR_en, SHL_en, NOT_en, AND_en, OR_en, XOR_en, CMP_en);
+    or(out, ADD_en, SHR_en, SHL_en, NOT_en, AND_en, OR_en, XOR_en);
     assign Z = ~|out;
     assign C = ADD_carry_out & en[0] | SHR_carry_out & en[1] | SHL_carry_out & en[2];
    
@@ -83,7 +85,7 @@ module alu_decoder(
     and a7(out[7], in[0], in[1], in[2]); // 111: CMP
 endmodule
 
-module adder(
+module alu_adder(
     input [7:0] a, b,
     input carry_in,
     output [7:0] sum,
@@ -109,16 +111,18 @@ module bit_add(
 
     wire a_xor_b, a_and_b, carry_and_ab;
     
-    xor(a_xor_b, a, b);
+    //xor(a_xor_b, a, b);
+    assign a_xor_b = a ^ b;
     and(a_and_b, a, b);
     and(carry_and_ab, carry_in, a_xor_b);
     
-    xor(sum, a_xor_b, carry_in);
+    //xor(sum, a_xor_b, carry_in);
+    assign sum = a_xor_b ^ carry_in;
     or(carry_out, a_and_b, carry_and_ab);
     
 endmodule
 
-module xorer(
+module alu_xorer(
     input [7:0] a, b,
     output [7:0] out,
     output A, E
@@ -142,8 +146,11 @@ module bit_xor(
     output A_out, E_out, out
 );  
     wire a_xor_b;  
-    xor(a_xor_b, a, b);
-    and(E_out, E_in, !a_xor_b);
+    assign out = a_xor_b;
+    
+    //xor(a_xor_b, a, b);
+    assign a_xor_b = a ^ b;
+    and(E_out, E_in, ~a_xor_b);
     or(A_out, a & E_in & a_xor_b, A_in);
     
 endmodule
